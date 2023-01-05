@@ -30,6 +30,15 @@ const likesBreed = document.querySelector("#likes-breed")
 const filterUserForm = document.querySelector("#filter-user-form")
 const messageForm = document.querySelector("#message-form")
 const messageLog = document.querySelector("#message-log")
+const userName = document.querySelector('#userName')
+const userLocation = document.querySelector('#userLocation')
+const userAge = document.querySelector('#userAge')
+const userGender = document.querySelector('#userGender')
+const userProfilePic = document.querySelector('#profilePic')
+const editButton = document.querySelector("#edit")
+const logOffButton = document.querySelector('#log-off')
+const gender = document.querySelector('#user-gender')
+
 
 // Event listeners
 likeButton.addEventListener("click", handleLike)
@@ -49,9 +58,14 @@ document.addEventListener('DOMContentLoaded', ()=> {
 document.querySelector("#signup-form").addEventListener('submit', e => {
     e.preventDefault()
     signUpNewUser(e)
+    updateNewUser(e)
     document.getElementById("myForm").style.display = "none";
 })
 messageForm.addEventListener('submit', handleMessage)
+document.querySelector('#refresh-data').addEventListener('click', renderLikesData)
+
+editButton.addEventListener('click', editInfo)
+logOffButton.addEventListener('click', logOff)
 
 // Event handlers
 function signUpNewUser(e){
@@ -132,6 +146,7 @@ function addUserToLikes(e){
 
     const deleteButton = document.createElement('button')
     deleteButton.textContent = 'x'
+    deleteButton.classList.add('delete-button', 'btn', 'btn-light', 'border','border-0')
     const cachedUser = currentUser
     deleteButton.addEventListener('click', ()=> {
         img.remove()
@@ -140,7 +155,7 @@ function addUserToLikes(e){
         myProfile.likedUsers.splice(indexToRemove, 1)
         modifyUser(myProfile, "PATCH", {likedUsers: myProfile.likedUsers})
         
-        if(cachedUser.index !== likedUser.index) {}
+        if(likedUser && cachedUser.index !== likedUser.index) {}
         else if (myProfile.likedUsers[indexToRemove]) renderLikesInfo(myProfile.likedUsers[indexToRemove])
         else if (myProfile.likedUsers[indexToRemove-1]) renderLikesInfo(myProfile.likedUsers[indexToRemove-1])
         else clearLikesInfo()
@@ -164,6 +179,57 @@ function generateNextUser(e){
     const nextUser = filteredUserArr.find(userObj => userObj.viewed === false)
     if (nextUser) displayUser(nextUser)
     else alert('No more users!')
+}
+
+function updateNewUser(e){
+    newUserName = e.target["user-name"].value,
+    newUserAge = e.target["user-age"].value,
+    newUserLocation = e.target["user-location"].value,
+    newUserGender = e.target["user-gender"].value,
+    newUserImg = e.target["profile-photo"].value,
+    
+    userName.textContent = newUserName
+    userLocation.textContent = newUserLocation
+    userAge.textContent = newUserAge
+    userGender.textContent = newUserGender
+    userProfilePic.src = newUserImg
+}
+
+function editInfo(e){
+    
+   if (userName.contentEditable === 'false'){
+    userName.contentEditable = 'true'
+   } else {
+    userName.contentEditable = 'false'
+   }
+   if (userLocation.contentEditable === 'false'){
+    userLocation.contentEditable = 'true'
+   } else {
+    userLocation.contentEditable = 'false'
+   }
+   if (userAge.contentEditable === 'false'){
+    userAge.contentEditable = 'true'
+   } else {
+    userAge.contentEditable = 'false'
+   }
+   if (dropInfo.getElementsByTagName('select').length === 0) {
+    newUserGender = document.querySelector('#userGender')
+    let genderEdit = gender.cloneNode(true)
+    genderEdit.id = 'userGender'
+    newUserGender.replaceWith(genderEdit)
+   } else {
+    newUserGender = document.querySelector('#userGender')
+    genderUpdate = otherGender.cloneNode(true)
+    genderUpdate.textContent = newUserGender.value
+    genderUpdate.id = 'userGender'
+    newUserGender.replaceWith(genderUpdate)
+   }
+}
+
+function logOff(){
+    document.getElementById("myForm").style.display = "block";
+    document.querySelector('#signup-form').reset()
+
 }
 
 // Fetch functions
@@ -194,11 +260,11 @@ function modifyUser(profileObj, method, body){
 
     return fetch(url, config)
     .then(response => response.json())
-    // .then(() => {
-    //     return fetch(userDataURL)
-    //     .then(response => response.json())
-    //     .then(json => json)
-    // })
+}
+
+function getUserData(){
+    return fetch(userDataURL)
+    .then(response => response.json())
 }
 
 // Render functions
@@ -224,6 +290,7 @@ function displayUser(userObj){
     otherBreed.textContent = userObj.breed
 }
 
+
 // Helper functions
 function fixBreedName(str){
     const arr = str.split('-').map(toTitleCase)
@@ -235,6 +302,67 @@ function toTitleCase(str){
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
+function renderLikesData(){
+    getUserData()
+    .then(json => {
+        const globalTopBreeds = aggregateLikeData(json, 'breed')
+        const myTopBreeds = myProfile? aggregateLikeData(json.filter(obj => obj.id === myProfile.id), 'breed') : []
+        
+        const topBreedList = document.querySelector('#top-breeds')
+        topBreedList.textContent = ''
+        globalTopBreeds.forEach(([value, count]) => {
+            const li = document.createElement('li')
+            li.textContent = `${value}: ${count} like${count===1 ? '' : 's'}`
+            topBreedList.append(li)
+        })
+
+        const myBreedList = document.querySelector('#my-top-breeds')
+        myBreedList.textContent = ''
+        myTopBreeds.forEach(([value, count]) => {
+            const li = document.createElement('li')
+            li.textContent = `${value}: ${count} like${count===1 ? '' : 's'}`
+            myBreedList.append(li)
+        })
+
+        const globalTopGenders = aggregateLikeData(json, 'gender')
+        const myTopGenders = myProfile? aggregateLikeData(json.filter(obj => obj.id === myProfile.id), 'gender') : []
+
+        const topGendersList = document.querySelector('#top-genders')
+        topGendersList.textContent = ''
+        convertToPercent(globalTopGenders).forEach(([value, count]) => {
+            const li = document.createElement('li')
+            li.textContent = `${toTitleCase(value)}: ${Math.round(count * 100)}%`
+            topGendersList.append(li)
+        })
+
+        const myGendersList = document.querySelector('#my-top-genders')
+        myGendersList.textContent = ''
+        convertToPercent(myTopGenders).forEach(([value, count]) => {
+            const li = document.createElement('li')
+            li.textContent = `${toTitleCase(value)}: ${Math.round(count * 100)}%`
+            myGendersList.append(li)
+        })
+
+    })
+}
+
+function aggregateLikeData(profileArr, key){
+    const likes = profileArr.reduce((acc, profileObj) => acc.concat(profileObj.likedUsers||[]),[])
+    const values = likes.map(like => like[key]).filter(value => value !==undefined)
+    const valueCount = values.reduce((acc, elem) => {
+        if(!Object.keys(acc).includes(elem)) acc[elem] = 1
+        else acc[elem]++
+        return acc
+    }, {})
+
+    const valueCountSorted = Object.entries(valueCount).sort(([value1, count1], [value2, count2])=> count2-count1)
+    return valueCountSorted.slice(0,10)
+}
+
+function convertToPercent(entriesArr){
+    const sumValues = entriesArr.reduce((acc, [key, value]) => acc + value, 0)
+    return entriesArr.map(([key, value]) => [key, value/sumValues])
+}
 
 // Initializers
 getRandomData(dataURL, undefined, 50)
@@ -261,5 +389,6 @@ getRandomData(dataURL, undefined, 50)
         filteredUserArr = globalUserArr
         console.log(userArr)
         displayUser(userArr[0])
+        renderLikesData()
     })
 })
